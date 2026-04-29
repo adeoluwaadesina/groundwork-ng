@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase-browser';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -15,19 +14,25 @@ export function LoginForm() {
       return;
     }
     setStatus('loading');
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent('/admin')}`,
-      },
-    });
+    setErrorMsg('');
 
-    if (error) {
-      setStatus('error');
-      setErrorMsg(error.message);
-    } else {
+    try {
+      const res = await fetch('/api/admin/request-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!res.ok) {
+        setStatus('error');
+        setErrorMsg('Something went wrong. Try again later.');
+        return;
+      }
+
       setStatus('sent');
+    } catch {
+      setStatus('error');
+      setErrorMsg('Network error. Check your connection and try again.');
     }
   };
 
@@ -36,12 +41,12 @@ export function LoginForm() {
       <div className="login-box">
         <div className="login-title">Ground Work · Admin</div>
         <p className="login-sub">
-          Enter your admin email. A one-time login link will be sent to your inbox.
+          Enter your admin email. If this address is authorized, you will receive a one-time login link.
         </p>
 
         {status === 'sent' ? (
           <div className="login-msg">
-            ✓ Check your email. Click the link to sign in.
+            If this address is authorized for admin access, check your inbox for a link.
           </div>
         ) : (
           <>
