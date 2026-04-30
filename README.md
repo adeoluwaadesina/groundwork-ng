@@ -84,9 +84,12 @@ Set `NEXT_PUBLIC_SITE_URL` to your real public URL in production (no trailing sl
 Still in Supabase dashboard:
 
 1. Go to **Authentication** > **URL Configuration**.
-2. Set **Site URL** to `http://localhost:3000` (for local dev).
-3. Add `http://localhost:3000/auth/callback` under **Redirect URLs**.
-4. Once deployed to Vercel, you'll come back here and add your production URL too.
+2. **Site URL** must be a **complete** `https://` origin (including the full hostname, for example `https://your-app.vercel.app`). Truncated or typo hostnames break magic links. For production, set it to the same canonical URL as `NEXT_PUBLIC_SITE_URL` on Vercel. For local-only work you can use `http://localhost:3000` while testing locally, then switch Site URL back to production when you ship.
+3. Under **Redirect URLs**, add every origin you use, each with `/auth/callback`, for example:
+   - `http://localhost:3000/auth/callback`
+   - `https://your-app.vercel.app/auth/callback`
+   - Preview URLs if you sign in from Vercel preview deployments.
+4. Save changes after edits.
 
 ### 7. Run locally
 
