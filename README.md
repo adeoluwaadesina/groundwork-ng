@@ -235,6 +235,8 @@ npm run lint         # Lint
 
 **Magic link opens localhost or you land on `localhost/?code=…`:** Supabase **Site URL** is probably still `http://localhost:3000`. Set Site URL to your production origin and add `https://your-domain/auth/callback` under Redirect URLs. Set `NEXT_PUBLIC_SITE_URL` on Vercel to the same origin.
 
+**Magic link lands on `/admin` or `/auth/callback` with `#access_token=…` in the address bar:** Email links use an implicit-style redirect (tokens in the hash). Only the browser can read hashes, so the app applies them client-side (`AdminHashSession` on `/admin`, and `/auth/callback` page for `/auth/callback` URLs). After deploying this behavior, open the link once more in the same browser session if needed.
+
 **Welcome or broadcast emails do not arrive:** Confirm `RESEND_API_KEY` and `FROM_EMAIL` are set. On `onboarding@resend.dev`, Resend only delivers to your own verified account email until you add a domain. In production, use a verified domain and a matching `FROM_EMAIL`. Check Vercel logs for Resend error messages.
 
 **Broadcast says unauthorized:** You must be logged into `/admin` with the same address as `ADMIN_EMAIL`. Session cookies must be sent (same browser; the admin button uses `credentials: 'include'`).
