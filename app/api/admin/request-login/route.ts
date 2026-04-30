@@ -1,6 +1,5 @@
 import { timingSafeEqual } from 'crypto';
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-admin';
 
 const RATE_WINDOW_MS = 15 * 60 * 1000;
 const RATE_MAX = 10;
@@ -36,72 +35,47 @@ function emailMatchesAllowed(input: string, allowed: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-function isEmailShape(s: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+function secretMatches(input: string, expected: string): boolean {
+  const a = Buffer.from(input, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 
-function callbackRedirectUrl(request: Request): string {
-  const nextPath = '/admin';
-  const q = `next=${encodeURIComponent(nextPath)}`;
-  const origin = request.headers.get('origin');
-  if (origin && /^https?:\/\//i.test(origin)) {
-    return `${origin.replace(/\/$/, '')}/auth/callback?${q}`;
-  }
-  const base = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '');
-  if (base) {
-    return `${base}/auth/callback?${q}`;
-  }
-  return `http://localhost:3000/auth/callback?${q}`;
-}
-
-function opaqueOk() {
-  return NextResponse.json({ ok: true });
+function opaqueResponse(authorized = false) {
+  return NextResponse.json({ ok: true, authorized });
 }
 
 export async function POST(request: Request) {
   try {
     if (!allowRequest(clientKey(request))) {
-      return opaqueOk();
+      return opaqueResponse(false);
     }
 
     let emailRaw = '';
+    let passwordRaw = '';
     try {
-      const body = (await request.json()) as { email?: unknown };
+      const body = (await request.json()) as { email?: unknown; password?: unknown };
       emailRaw = typeof body.email === 'string' ? body.email : '';
+      passwordRaw = typeof body.password === 'string' ? body.password : '';
     } catch {
-      return opaqueOk();
+      return opaqueResponse(false);
     }
 
     const email = emailRaw.trim();
-    if (!email || !isEmailShape(email)) {
-      return opaqueOk();
-    }
+    const password = passwordRaw;
 
     const allowed = process.env.ADMIN_EMAIL?.trim();
-    if (!allowed) {
-      return opaqueOk();
+    const expectedPassword = process.env.ADMIN_PASSWORD ?? '';
+    if (!allowed || !expectedPassword || !email || !password) {
+      return opaqueResponse(false);
     }
 
-    if (!emailMatchesAllowed(email, allowed)) {
-      return opaqueOk();
-    }
+    const isAuthorized =
+      emailMatchesAllowed(email, allowed) && secretMatches(password, expectedPassword);
 
-    const supabase = createAdminClient();
-    const redirectTo = callbackRedirectUrl(request);
-
-    const { error } = await supabase.auth.signInWithOtp({
-      email: allowed,
-      options: {
-        emailRedirectTo: redirectTo,
-      },
-    });
-
-    if (error) {
-      return opaqueOk();
-    }
-
-    return opaqueOk();
+    return opaqueResponse(isAuthorized);
   } catch {
-    return opaqueOk();
+    return opaqueResponse(false);
   }
 }

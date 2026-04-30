@@ -12,7 +12,7 @@ A publication site where you publish structured frameworks (policy, infrastructu
 
 **Stack at a glance:**
 - **Next.js 14 (App Router)** for the site
-- **Supabase** as the database, plus passwordless admin auth
+- **Supabase** as the database and admin auth backend
 - **Resend** for transactional and broadcast email
 - **Vercel** for hosting (free tier)
 - **Total monthly cost at launch: 0** (within free tiers)
@@ -73,9 +73,10 @@ RESEND_API_KEY=re_xxxx
 FROM_EMAIL=Ground Work <onboarding@resend.dev>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ADMIN_EMAIL=your-real-email@example.com
+ADMIN_PASSWORD=your-strong-admin-password
 ```
 
-**Important:** `ADMIN_EMAIL` must be the email you'll log into the admin portal with.
+**Important:** `ADMIN_EMAIL` and `ADMIN_PASSWORD` must match a real email/password account in Supabase Auth (create it in Supabase **Authentication** > **Users** if needed).
 
 Set `NEXT_PUBLIC_SITE_URL` to your real public URL in production (no trailing slash), for example `https://your-project.vercel.app` or your custom domain. Broadcast emails use it for framework links.
 
@@ -83,13 +84,8 @@ Set `NEXT_PUBLIC_SITE_URL` to your real public URL in production (no trailing sl
 
 Still in Supabase dashboard:
 
-1. Go to **Authentication** > **URL Configuration**.
-2. **Site URL** must be a **complete** `https://` origin (including the full hostname, for example `https://your-app.vercel.app`). Truncated or typo hostnames break magic links. For production, set it to the same canonical URL as `NEXT_PUBLIC_SITE_URL` on Vercel. For local-only work you can use `http://localhost:3000` while testing locally, then switch Site URL back to production when you ship.
-3. Under **Redirect URLs**, add every origin you use, each with `/auth/callback`, for example:
-   - `http://localhost:3000/auth/callback`
-   - `https://your-app.vercel.app/auth/callback`
-   - Preview URLs if you sign in from Vercel preview deployments.
-4. Save changes after edits.
+1. Go to **Authentication** > **Users** and ensure your admin user exists as an **email/password** user.
+2. If not, click **Add user** and create the admin email/password you set in `.env.local`.
 
 ### 7. Run locally
 
@@ -102,9 +98,8 @@ Open `http://localhost:3000`. The site should load with no frameworks yet.
 ### 8. Log into admin and publish your first framework
 
 1. Go to `http://localhost:3000/admin`.
-2. Enter your `ADMIN_EMAIL`.
-3. Check your inbox for the magic login link.
-4. Click it. You'll be signed in to the admin portal.
+2. Enter `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+3. Click **Sign In**. You'll be signed in to the admin portal.
 5. Add your first framework. Hit **Publish**.
 6. Go back to `/` and you'll see it on the homepage.
 
@@ -137,18 +132,11 @@ git push -u origin main
 
 After ~1 minute you'll get a URL like `groundwork-xxxxx.vercel.app`.
 
-### 3. Update Supabase auth for production
+### 3. Update auth/env for production
 
-Back in Supabase **Authentication** > **URL Configuration**:
-
-- Set **Site URL** to your live site (for example `https://your-project.vercel.app`). If this stays `http://localhost:3000`, magic links in email will still point at localhost and you will see `?code=` on the wrong host after clicking.
-- Under **Redirect URLs**, add:
-  - `https://your-vercel-url.vercel.app/auth/callback`
-  - Keep `http://localhost:3000/auth/callback` for local admin login.
-
-In Vercel, set `NEXT_PUBLIC_SITE_URL` to the same public origin (no trailing slash) so redirects and emails stay consistent.
-
-Admin login requests only go through the server and only the address in `ADMIN_EMAIL` can receive a magic link; other addresses get the same response with no email sent.
+- In Vercel, set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `NEXT_PUBLIC_SITE_URL` to production values.
+- In Supabase **Authentication** > **Users**, ensure the same admin email/password exists.
+- Redeploy after env changes.
 
 ### 4. (Later) Connect a custom domain
 
@@ -172,9 +160,8 @@ groundwork/
 │   ├── globals.css               # All styles
 │   ├── framework/[id]/           # Individual framework reader
 │   ├── admin/                    # Admin portal (protected)
-│   ├── auth/callback/            # Supabase magic link handler
 │   └── api/
-│       ├── admin/request-login/ # Admin magic link (allowlisted email only)
+│       ├── admin/request-login/ # Admin credential pre-check (rate-limited)
 │       ├── subscribe/            # Newsletter signup + welcome email
 │       ├── broadcast/            # Admin: email all subscribers about a framework
 │       └── views/                # View counter
@@ -205,7 +192,7 @@ groundwork/
 
 **Newsletter.** Subscribers are stored only in Supabase (`subscribers` table). On first signup, the app sends a short welcome email through Resend. When you publish or update a framework, you can click **Send to subscribers** in the admin portal. That route loads every subscriber email from Supabase and sends a batch through Resend (up to 100 messages per API call, chunked automatically). List management is yours: remove addresses in the `subscribers` table if someone asks to be taken off.
 
-**Admin auth.** Magic link via Supabase. You enter your email, get a link, click it, you're in. Only the email matching `ADMIN_EMAIL` env var is allowed in. Anyone else gets signed out instantly.
+**Admin auth.** Username/password via Supabase Auth plus server-side allowlist. Login requires matching `ADMIN_EMAIL` + `ADMIN_PASSWORD`, then `/admin` and protected admin APIs enforce that the active session email matches `ADMIN_EMAIL`.
 
 **Lite vs full.** Each framework has two content fields. The Overview (lite) loads first. A button reveals the full version. The toggle in the top bar lets readers switch back.
 
@@ -236,9 +223,7 @@ npm run lint         # Lint
 
 **"Invalid API key" on subscribe:** Check `.env.local` has the right Supabase keys. Restart the dev server after editing.
 
-**Magic link opens localhost or you land on `localhost/?code=…`:** Supabase **Site URL** is probably still `http://localhost:3000`. Set Site URL to your production origin and add `https://your-domain/auth/callback` under Redirect URLs. Set `NEXT_PUBLIC_SITE_URL` on Vercel to the same origin.
-
-**Magic link lands with `#access_token=…` or `#error=…` in the address bar:** Only the browser can read the hash. A root-level handler applies tokens or sends you to `/admin` with a clear message. **`otp_expired` or `access_denied`:** the link is past its lifetime, was opened twice, or the redirect URL did not match Supabase. Request a **new** link from `/admin`, use it **once**, and add every host you use (production and preview, for example `https://….vercel.app`) under Supabase **Authentication** > **URL Configuration** > **Redirect URLs**, including `https://YOUR-HOST/auth/callback`.
+**Admin login fails with `Invalid email or password`:** confirm the entered credentials match both `.env.local`/Vercel (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) and the Supabase Auth user record.
 
 **Welcome or broadcast emails do not arrive:** Confirm `RESEND_API_KEY` and `FROM_EMAIL` are set. On `onboarding@resend.dev`, Resend only delivers to your own verified account email until you add a domain. In production, use a verified domain and a matching `FROM_EMAIL`. Check Vercel logs for Resend error messages.
 
@@ -246,7 +231,7 @@ npm run lint         # Lint
 
 **Wrong links in email:** Set `NEXT_PUBLIC_SITE_URL` to the public URL readers use. For Vercel previews you can rely on `VERCEL_URL` as a fallback only when `NEXT_PUBLIC_SITE_URL` is unset; prefer setting it explicitly.
 
-**"User not authorized" in admin:** Your `ADMIN_EMAIL` env var doesn't match the email you're logging in with. Update `.env.local` (or Vercel env vars) and redeploy.
+**"User not authorized" in admin:** Your active session email doesn't match `ADMIN_EMAIL`, or `ADMIN_EMAIL` is missing in env vars. Update env vars and redeploy.
 
 ---
 
