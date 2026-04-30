@@ -1,11 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+const FLASH_KEY = 'gw_auth_flash';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem(FLASH_KEY);
+        if (!raw) return;
+        sessionStorage.removeItem(FLASH_KEY);
+        const parsed = JSON.parse(raw) as { message?: string };
+        if (parsed.message) {
+          setStatus('error');
+          setErrorMsg(parsed.message);
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const handleLogin = async () => {
     if (!email || !email.includes('@')) {

@@ -84,9 +84,12 @@ Set `NEXT_PUBLIC_SITE_URL` to your real public URL in production (no trailing sl
 Still in Supabase dashboard:
 
 1. Go to **Authentication** > **URL Configuration**.
-2. Set **Site URL** to `http://localhost:3000` (for local dev).
-3. Add `http://localhost:3000/auth/callback` under **Redirect URLs**.
-4. Once deployed to Vercel, you'll come back here and add your production URL too.
+2. **Site URL** must be a **complete** `https://` origin (including the full hostname, for example `https://your-app.vercel.app`). Truncated or typo hostnames break magic links. For production, set it to the same canonical URL as `NEXT_PUBLIC_SITE_URL` on Vercel. For local-only work you can use `http://localhost:3000` while testing locally, then switch Site URL back to production when you ship.
+3. Under **Redirect URLs**, add every origin you use, each with `/auth/callback`, for example:
+   - `http://localhost:3000/auth/callback`
+   - `https://your-app.vercel.app/auth/callback`
+   - Preview URLs if you sign in from Vercel preview deployments.
+4. Save changes after edits.
 
 ### 7. Run locally
 
@@ -235,7 +238,7 @@ npm run lint         # Lint
 
 **Magic link opens localhost or you land on `localhost/?code=…`:** Supabase **Site URL** is probably still `http://localhost:3000`. Set Site URL to your production origin and add `https://your-domain/auth/callback` under Redirect URLs. Set `NEXT_PUBLIC_SITE_URL` on Vercel to the same origin.
 
-**Magic link lands on `/admin` or `/auth/callback` with `#access_token=…` in the address bar:** Email links use an implicit-style redirect (tokens in the hash). Only the browser can read hashes, so the app applies them client-side (`AdminHashSession` on `/admin`, and `/auth/callback` page for `/auth/callback` URLs). After deploying this behavior, open the link once more in the same browser session if needed.
+**Magic link lands with `#access_token=…` or `#error=…` in the address bar:** Only the browser can read the hash. A root-level handler applies tokens or sends you to `/admin` with a clear message. **`otp_expired` or `access_denied`:** the link is past its lifetime, was opened twice, or the redirect URL did not match Supabase. Request a **new** link from `/admin`, use it **once**, and add every host you use (production and preview, for example `https://….vercel.app`) under Supabase **Authentication** > **URL Configuration** > **Redirect URLs**, including `https://YOUR-HOST/auth/callback`.
 
 **Welcome or broadcast emails do not arrive:** Confirm `RESEND_API_KEY` and `FROM_EMAIL` are set. On `onboarding@resend.dev`, Resend only delivers to your own verified account email until you add a domain. In production, use a verified domain and a matching `FROM_EMAIL`. Check Vercel logs for Resend error messages.
 
