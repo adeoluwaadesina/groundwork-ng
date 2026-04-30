@@ -1,0 +1,124 @@
+# Project Build Standards
+
+You are helping me build a public GitHub project. Apply these standards by default unless I explicitly override them. I work mostly in Cursor Composer, build on a `dev` branch, and run a final sanity check before merging to `main`. The repo will be public, so it needs to look like the work of a skilled engineer — clean, secure, production-grade — without obvious AI fingerprints.
+
+---
+
+## 1. Engineering Standards
+
+### Structure
+- Use a sensible folder structure for the stack. Don't over-architect small projects.
+- Clear separation of concerns: routes/controllers, services/business logic, data/models, utils, config.
+- TypeScript/Next.js: App Router conventions, colocate components, `lib/` for shared logic.
+- Python/FastAPI: `app/` with `routers/`, `services/`, `models/`, `core/` (config, security), `tests/`.
+- Java/Spring: standard Maven/Gradle layout, package by feature where it makes sense.
+
+### Code quality
+- Meaningful names. No `data2`, `temp`, `helper`, `utils2`, `handleStuff`.
+- Functions do one thing. Short, but don't fragment for the sake of it.
+- No dead code, no commented-out blocks left behind, no `console.log` / `print` debug calls in committed code.
+- Type everything in TypeScript. Use type hints in Python. Use proper generics in Java.
+- Handle errors explicitly. Don't swallow exceptions. Return useful error responses.
+- Log meaningfully: info for state changes, warn for recoverable issues, error for failures. Never log secrets or PII.
+- Tests where they add real value: business logic, critical paths, tricky edge cases. Skip trivial getters/glue.
+
+### Repo scaffolding (always include)
+- `README.md` (see README rules below)
+- `.gitignore` proper for the stack — `node_modules`, `__pycache__`, `target/`, `.env`, `.DS_Store`, IDE folders
+- `.env.example` with all required env vars listed and described, no real values
+- `LICENSE` (MIT by default unless I say otherwise)
+- Lock file committed (`package-lock.json`, `poetry.lock`, etc.)
+
+---
+
+## 2. Security (non-negotiable defaults)
+
+- All secrets in environment variables. Never commit real `.env` files. Always provide `.env.example`.
+- Input validation on every entry point: Zod for TS, Pydantic for Python, Bean Validation for Java.
+- Parameterized queries / ORM only. Never string-concatenate SQL.
+- Auth and authorization where the project handles users or sensitive data. Don't leave routes open by default.
+- Rate limiting on public APIs.
+- CORS configured explicitly. No wildcard `*` in production configs.
+- Safe error messages: never leak stack traces, internal paths, or DB errors to clients.
+- HTTPS-only assumptions in deployment configs (secure cookies, HSTS where relevant).
+- No hardcoded keys, tokens, internal URLs, or test credentials anywhere.
+- Dependency hygiene: pin versions, prefer well-maintained libs, avoid abandoned packages.
+
+---
+
+## 3. Git & Commit Standards
+
+### Branching
+- Work happens on `dev`. Feature branches off `dev` for bigger pieces. PR into `dev`, then `dev` → `main` via PR when stable.
+- Never commit directly to `main`.
+
+### Commits — Conventional Commits, human-paced
+- Format: `type(scope): short imperative description`
+- Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `style`, `perf`
+- Examples:
+  - `feat(auth): add jwt refresh flow`
+  - `fix(api): handle empty payload on /upload`
+  - `refactor(db): extract connection pool setup`
+- Small, scoped commits. One logical change per commit. If the message needs "and", split it.
+- Avoid catch-all commits: `update files`, `wip`, `final changes`, `added everything`.
+- Realistic cadence: occasional `fix typo`, `tweak rate limit`, `actually fix the auth bug` is good — it reads human. Don't force perfection.
+- Never sign commits as Claude, AI, or anything other than my git identity.
+
+### PR descriptions
+- Brief and direct. What changed, why, anything reviewer should know.
+- No emoji headers, no marketing tone. One or two sentences is fine for small PRs.
+
+---
+
+## 4. README Standards
+
+This is the most common AI tell. Get it right.
+
+### Voice
+- Write like a developer explaining their own project to other developers. Direct, slightly informal, no marketing tone.
+- **Banned phrases:** "In today's fast-paced world", "leverages cutting-edge", "seamlessly", "robust", "comprehensive solution", "elevate your", "unlock the power of", "game-changing", "state-of-the-art".
+- **Banned structures:** every section header starting with an emoji (🚀 ✨ 🎯 💡), excessive bullet points where prose would do, hype-style "Why X?" sections.
+- One or two emojis max in the whole README, only if they genuinely fit.
+
+### Structure (adapt to the project — don't force every section)
+- Short title + 1-2 sentence description of what it actually does
+- Why it exists / what problem it solves (only if non-obvious)
+- Quick demo: screenshot, GIF, or short usage snippet
+- Tech stack (brief list)
+- Getting started: prerequisites, install, env setup, run command — terse and accurate
+- Project structure (only if it helps; skip for small projects)
+- API docs / usage examples (only what's useful)
+- License
+
+A 60-line README beats a 400-line template. Skip what doesn't apply.
+
+---
+
+## 5. Code Comments
+
+- Comment the **why**, not the **what**. Don't write `// loop through users` above `for (const user of users)`.
+- Add comments for non-obvious decisions, tricky edge cases, workarounds, or context that won't be obvious in 6 months.
+- It's fine — and human — to leave self-explanatory code uncommented.
+
+---
+
+## 6. Anti-AI-Tell Checklist
+
+Avoid these patterns:
+- Every function having verbose JSDoc/docstring even when trivial
+- Perfectly uniform code style across every file with zero variation
+- Over-architected tiny projects (3 layers of abstraction for a CRUD endpoint)
+- Excessive defensive checks for impossible conditions
+- README with ✨ emoji headers and "Features" bulleted lists of obvious features
+- Commit messages that are all the exact same shape and length
+- All files created in one massive initial commit
+- Comments restating what the code obviously does
+
+---
+
+## 7. When unsure
+
+- Ask before introducing a major dependency, restructuring folders, or changing architectural direction.
+- Default to simpler over cleverer.
+- If a stack-specific best practice conflicts with anything above, follow the stack convention and tell me.
+- Confirm the stack and high-level plan briefly at the start, then proceed.

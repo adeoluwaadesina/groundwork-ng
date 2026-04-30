@@ -1,9 +1,8 @@
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase-server';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SubscribeForm } from '@/components/SubscribeForm';
-import { EyeIcon } from '@/components/EyeIcon';
+import { FrameworkList } from '@/components/FrameworkList';
 import type { Framework } from '@/lib/types';
 
 export const revalidate = 60; // Re-fetch every 60 seconds
@@ -75,26 +74,7 @@ export default async function HomePage() {
             No frameworks published yet. Check back soon.
           </div>
         ) : (
-          frameworks.map((fw) => (
-            <Link key={fw.id} href={`/framework/${fw.id}`} className="framework-card">
-              <div className="card-header">
-                <span className="card-id">{fw.id}</span>
-                <div className="card-meta">
-                  <span className="card-views"><EyeIcon /> {(fw.views || 0).toLocaleString()}</span>
-                  <span className="card-date">{fw.date}</span>
-                </div>
-              </div>
-              <h2 className="card-title">{fw.title}</h2>
-              <p className="card-subtitle">{fw.subtitle}</p>
-              <div className="card-lite">{fw.lite_content}</div>
-              <div className="card-footer">
-                <div className="card-tags">
-                  {fw.tags?.map((t) => <span key={t} className="tag">{t}</span>)}
-                </div>
-                <div className="read-more">Read framework →</div>
-              </div>
-            </Link>
-          ))
+          <FrameworkList frameworks={frameworks} />
         )}
       </section>
 

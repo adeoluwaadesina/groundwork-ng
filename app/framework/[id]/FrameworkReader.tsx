@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { EyeIcon } from '@/components/EyeIcon';
+import { LinkifiedParagraph } from '@/components/LinkifiedParagraph';
 import type { Framework } from '@/lib/types';
 
 const PROGRESS_COOKIE_PREFIX = 'gw_progress_';
@@ -75,7 +76,12 @@ export function FrameworkReader({ framework }: { framework: Framework }) {
   const paragraphs = (content || '').split(/\n\n+/).filter(Boolean);
 
   return (
-    <div ref={containerRef} onScroll={handleScroll} style={{ height: '100vh', overflowY: 'auto', background: 'var(--white)' }}>
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="reader-root"
+      style={{ height: '100vh', overflowY: 'auto', background: 'var(--white)' }}
+    >
       <div className="reader-topbar">
         <Link href="/" className="reader-back">← Back</Link>
         <div className="toggle-container">
@@ -115,7 +121,11 @@ export function FrameworkReader({ framework }: { framework: Framework }) {
           <>
             <div className="lite-badge">Overview · Lite Version</div>
             <div className="reader-content">
-              {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
+              {paragraphs.map((p, i) => (
+                <p key={i}>
+                  <LinkifiedParagraph text={p} />
+                </p>
+              ))}
             </div>
             {framework.full_content && (
               <div className="full-cta">
@@ -128,7 +138,11 @@ export function FrameworkReader({ framework }: { framework: Framework }) {
           </>
         ) : (
           <div className="reader-content">
-            {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
+            {paragraphs.map((p, i) => (
+              <p key={i}>
+                <LinkifiedParagraph text={p} />
+              </p>
+            ))}
           </div>
         )}
       </div>

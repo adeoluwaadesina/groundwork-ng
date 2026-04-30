@@ -138,10 +138,14 @@ After ~1 minute you'll get a URL like `groundwork-xxxxx.vercel.app`.
 
 Back in Supabase **Authentication** > **URL Configuration**:
 
-- Add `https://your-vercel-url.vercel.app` to **Site URL**
-- Add `https://your-vercel-url.vercel.app/auth/callback` to **Redirect URLs**
+- Set **Site URL** to your live site (for example `https://your-project.vercel.app`). If this stays `http://localhost:3000`, magic links in email will still point at localhost and you will see `?code=` on the wrong host after clicking.
+- Under **Redirect URLs**, add:
+  - `https://your-vercel-url.vercel.app/auth/callback`
+  - Keep `http://localhost:3000/auth/callback` for local admin login.
 
-Now the admin login works in production.
+In Vercel, set `NEXT_PUBLIC_SITE_URL` to the same public origin (no trailing slash) so redirects and emails stay consistent.
+
+Admin login requests only go through the server and only the address in `ADMIN_EMAIL` can receive a magic link; other addresses get the same response with no email sent.
 
 ### 4. (Later) Connect a custom domain
 
@@ -167,6 +171,7 @@ groundwork/
 │   ├── admin/                    # Admin portal (protected)
 │   ├── auth/callback/            # Supabase magic link handler
 │   └── api/
+│       ├── admin/request-login/ # Admin magic link (allowlisted email only)
 │       ├── subscribe/            # Newsletter signup + welcome email
 │       ├── broadcast/            # Admin: email all subscribers about a framework
 │       └── views/                # View counter
@@ -228,7 +233,7 @@ npm run lint         # Lint
 
 **"Invalid API key" on subscribe:** Check `.env.local` has the right Supabase keys. Restart the dev server after editing.
 
-**Magic link doesn't redirect properly:** Check that `Site URL` and `Redirect URLs` in Supabase Auth settings include both `http://localhost:3000` and your production URL with `/auth/callback`.
+**Magic link opens localhost or you land on `localhost/?code=…`:** Supabase **Site URL** is probably still `http://localhost:3000`. Set Site URL to your production origin and add `https://your-domain/auth/callback` under Redirect URLs. Set `NEXT_PUBLIC_SITE_URL` on Vercel to the same origin.
 
 **Welcome or broadcast emails do not arrive:** Confirm `RESEND_API_KEY` and `FROM_EMAIL` are set. On `onboarding@resend.dev`, Resend only delivers to your own verified account email until you add a domain. In production, use a verified domain and a matching `FROM_EMAIL`. Check Vercel logs for Resend error messages.
 
@@ -244,7 +249,7 @@ npm run lint         # Lint
 
 - **RSS feed** for each framework so readers can subscribe via reader apps
 - **Open Graph image generation** so frameworks look nice when shared on Twitter/LinkedIn
-- **Search** across all frameworks (Supabase full-text search is free)
+- **Server-side full-text search** if the homepage filter is not enough (Supabase full-text is free)
 - **Comment system** (Disqus or Giscus, both free)
 - **Analytics** (Plausible or Vercel Analytics, both privacy-friendly)
 - **Markdown rendering** in the framework body (currently plain paragraphs split on blank lines)
