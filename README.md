@@ -132,10 +132,11 @@ git push -u origin main
 
 After ~1 minute you'll get a URL like `groundwork-xxxxx.vercel.app`.
 
-### 3. Update auth/env for production
+### 3. Update auth/env for production and preview
 
-- In Vercel, set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `NEXT_PUBLIC_SITE_URL` to production values.
-- In Supabase **Authentication** > **Users**, ensure the same admin email/password exists.
+- In Vercel, set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `NEXT_PUBLIC_SITE_URL` for each environment you use.
+- **Production** and **Preview** are separate: branch previews (for example `…-git-dev-….vercel.app`) only see variables scoped to **Preview**. If `ADMIN_PASSWORD` is missing there, login always fails with a generic invalid-credentials message while the API still returns HTTP 200 (see troubleshooting).
+- In Supabase **Authentication** > **Users**, ensure the same admin email/password exists as an email/password user, and that the Email provider allows password sign-in.
 - Redeploy after env changes.
 
 ### 4. (Later) Connect a custom domain
@@ -223,7 +224,9 @@ npm run lint         # Lint
 
 **"Invalid API key" on subscribe:** Check `.env.local` has the right Supabase keys. Restart the dev server after editing.
 
-**Admin login fails with `Invalid email or password`:** confirm the entered credentials match both `.env.local`/Vercel (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) and the Supabase Auth user record.
+**Admin login fails with `Invalid email or password`:** Confirm the entered email and password match `.env.local` or Vercel (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) and the Supabase Auth user (same password for both the env check and `signInWithPassword`). Avoid accidental spaces when pasting values in the Vercel dashboard.
+
+**Vercel logs show `POST /api/admin/request-login` as 200 but you still cannot sign in:** That is normal. The route always responds with **200** and a JSON body `{ "ok": true, "authorized": true|false }` so failures do not use HTTP error codes. Open the browser **Network** tab, select that request, and inspect the JSON: if `authorized` is `false`, the server rejected the email/password pair (often missing **Preview** env vars, wrong email, or password mismatch). If `authorized` is `true` but you still see an error, Supabase rejected `signInWithPassword` (user missing, wrong password in Auth, or password sign-in disabled for Email).
 
 **Welcome or broadcast emails do not arrive:** Confirm `RESEND_API_KEY` and `FROM_EMAIL` are set. On `onboarding@resend.dev`, Resend only delivers to your own verified account email until you add a domain. In production, use a verified domain and a matching `FROM_EMAIL`. Check Vercel logs for Resend error messages.
 

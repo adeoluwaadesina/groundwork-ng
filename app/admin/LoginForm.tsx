@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
@@ -9,6 +10,7 @@ export function LoginForm() {
   const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -59,7 +61,6 @@ export function LoginForm() {
         return;
       }
 
-      router.push('/admin');
       router.refresh();
     } catch {
       setStatus('error');
@@ -70,6 +71,9 @@ export function LoginForm() {
   return (
     <div className="login-shell">
       <div className="login-box">
+        <Link href="/" className="login-home">
+          Back to site
+        </Link>
         <div className="login-title">Ground Work · Admin</div>
         <p className="login-sub">
           Sign in with your admin email and password.
@@ -85,15 +89,29 @@ export function LoginForm() {
           disabled={status === 'loading'}
           autoFocus
         />
-        <input
-          className="login-input"
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-          disabled={status === 'loading'}
-        />
+        <div className="login-password-field">
+          <input
+            className="login-input"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+            disabled={status === 'loading'}
+            autoComplete="current-password"
+            aria-describedby={status === 'error' && errorMsg ? 'login-error' : undefined}
+          />
+          <button
+            type="button"
+            className="login-password-toggle"
+            onClick={() => setShowPassword((v) => !v)}
+            disabled={status === 'loading'}
+            aria-pressed={showPassword}
+            aria-label={showPassword ? 'Hide password' : 'Show password'}
+          >
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
         <button
           className="login-btn"
           onClick={handleLogin}
@@ -101,7 +119,11 @@ export function LoginForm() {
         >
           {status === 'loading' ? 'Signing in...' : 'Sign In'}
         </button>
-        {status === 'error' && <div className="login-err">{errorMsg}</div>}
+        {status === 'error' && (
+          <div id="login-error" className="login-err" role="alert">
+            {errorMsg}
+          </div>
+        )}
       </div>
     </div>
   );

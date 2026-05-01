@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     const password = passwordRaw;
 
     const allowed = process.env.ADMIN_EMAIL?.trim();
-    const expectedPassword = process.env.ADMIN_PASSWORD ?? '';
+    const expectedPassword = process.env.ADMIN_PASSWORD?.trim() ?? '';
     if (!allowed || !expectedPassword || !email || !password) {
       return opaqueResponse(false);
     }
