@@ -18,7 +18,7 @@ export default async function AdminPage() {
   // Check email matches admin
   const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const userEmail = user.email?.trim().toLowerCase();
-  if (adminEmail && userEmail !== adminEmail) {
+  if (!adminEmail || userEmail !== adminEmail) {
     await supabase.auth.signOut();
     redirect('/admin');
   }

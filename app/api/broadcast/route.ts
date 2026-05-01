@@ -8,7 +8,7 @@ import { broadcastEmailHtml, broadcastEmailSubject } from '@/lib/email/templates
 
 export async function POST(request: Request) {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL?.trim();
+    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
     if (!adminEmail) {
       return NextResponse.json({ error: 'Server misconfiguration.' }, { status: 500 });
     }
@@ -18,7 +18,8 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabaseAuth.auth.getUser();
 
-    if (!user?.email || user.email !== adminEmail) {
+    const userEmail = user?.email?.trim().toLowerCase();
+    if (!userEmail || userEmail !== adminEmail) {
       return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
     }
 

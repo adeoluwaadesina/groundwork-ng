@@ -549,6 +549,59 @@ button { font-family: inherit; }
   transition: border-color 0.2s;
 }
 .login-input:focus { border-color: var(--green); }
+.login-password-field {
+  position: relative;
+  margin-bottom: 1rem;
+}
+.login-password-field .login-input {
+  margin-bottom: 0;
+  padding-right: 4.75rem;
+}
+.login-password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 2px;
+  line-height: 1;
+  min-height: 2rem;
+  -webkit-tap-highlight-color: transparent;
+}
+.login-password-toggle:hover { color: var(--green); }
+.login-password-toggle:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.login-password-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.login-home {
+  display: inline-block;
+  margin-bottom: 1.25rem;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.login-home:hover {
+  color: var(--green);
+  border-color: var(--green);
+}
 .login-btn {
   width: 100%; background: var(--green); color: var(--white); border: none;
   padding: 11px; border-radius: 3px; cursor: pointer;
@@ -606,7 +659,18 @@ button { font-family: inherit; }
     padding: 8px 10px;
   }
   .reader-body { padding: 2.5rem 1rem 4rem; }
-  .framework-toolbar { flex-direction: column; }
-  .fw-view-toggle { width: 100%; }
+  /* Column flex: 1 1 160px on .fw-field sets *height* to 160px+ and flex-grow stacks oddly — use natural height only */
+  .framework-toolbar {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+  .framework-toolbar .fw-field {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+  .fw-view-toggle { width: 100%; flex: 0 0 auto; }
   .fw-view-toggle button { flex: 1; }
 }
