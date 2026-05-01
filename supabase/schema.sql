@@ -26,8 +26,12 @@ create index if not exists frameworks_published_idx on frameworks(published_at d
 -- ─────────────────────────────────────────────
 create table if not exists subscribers (
   email text primary key,
-  subscribed_at timestamptz default now()
+  subscribed_at timestamptz default now(),
+  receive_mail boolean not null default true,
+  unsubscribe_token uuid not null default gen_random_uuid()
 );
+
+create unique index if not exists subscribers_unsubscribe_token_key on subscribers (unsubscribe_token);
 
 -- ─────────────────────────────────────────────
 -- VIEW INCREMENT FUNCTION (atomic, race-safe)
@@ -90,3 +94,8 @@ drop trigger if exists frameworks_updated_at on frameworks;
 create trigger frameworks_updated_at
   before update on frameworks
   for each row execute function set_updated_at();
+
+-- If you created `subscribers` before receive_mail / unsubscribe_token existed, run once in SQL Editor:
+-- alter table subscribers add column if not exists receive_mail boolean not null default true;
+-- alter table subscribers add column if not exists unsubscribe_token uuid not null default gen_random_uuid();
+-- create unique index if not exists subscribers_unsubscribe_token_key on subscribers (unsubscribe_token);

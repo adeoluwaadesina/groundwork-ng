@@ -59,39 +59,50 @@ export async function POST(request: Request) {
 
     const { data: subscriberRows, error: subError } = await admin
       .from('subscribers')
-      .select('email');
+      .select('email, unsubscribe_token')
+      .eq('receive_mail', true);
 
     if (subError) {
       console.error('Broadcast subscribers fetch:', subError);
       return NextResponse.json({ error: 'Could not load subscribers.' }, { status: 500 });
     }
 
-    const emails = Array.from(
-      new Set(
-        (subscriberRows || [])
-          .map((r) => (typeof r.email === 'string' ? r.email.trim().toLowerCase() : ''))
-          .filter((e) => e.includes('@'))
-      )
-    );
+    type SubRow = { email: string; unsubscribe_token: string };
+    const rows: SubRow[] = [];
+    const seen = new Set<string>();
+    for (const r of subscriberRows || []) {
+      const e = typeof r.email === 'string' ? r.email.trim().toLowerCase() : '';
+      const tok = r.unsubscribe_token != null ? String(r.unsubscribe_token) : '';
+      if (!e.includes('@') || !tok || seen.has(e)) continue;
+      seen.add(e);
+      rows.push({ email: e, unsubscribe_token: tok });
+    }
 
-    if (emails.length === 0) {
-      return NextResponse.json({ success: true, sent: 0, message: 'No subscribers to email.' });
+    if (rows.length === 0) {
+      return NextResponse.json({
+        success: true,
+        sent: 0,
+        message: 'No subscribers opted in to emails.',
+      });
     }
 
     const siteUrl = resolveSiteUrl();
+    const unsubBase = `${siteUrl}/api/unsubscribe`;
     const subject = broadcastEmailSubject(framework);
-    const html = broadcastEmailHtml(framework, siteUrl);
 
     let sent = 0;
     const batchErrors: string[] = [];
 
-    for (const group of chunk(emails, 100)) {
-      const payload = group.map((to) => ({
-        from,
-        to: [to],
-        subject,
-        html,
-      }));
+    for (const group of chunk(rows, 100)) {
+      const payload = group.map((row) => {
+        const unsubscribeUrl = `${unsubBase}?token=${encodeURIComponent(row.unsubscribe_token)}`;
+        return {
+          from,
+          to: [row.email],
+          subject,
+          html: broadcastEmailHtml(framework, siteUrl, unsubscribeUrl),
+        };
+      });
 
       const { data, error } = await resend.batch.send(payload);
 
@@ -108,7 +119,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: batchErrors.length === 0,
       sent,
-      subscriberCount: emails.length,
+      subscriberCount: rows.length,
       errors: batchErrors.length ? batchErrors : undefined,
     });
   } catch (err) {
