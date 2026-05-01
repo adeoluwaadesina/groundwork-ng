@@ -33,12 +33,18 @@ export default async function AdminPage() {
     .from('subscribers')
     .select('*', { count: 'exact', head: true });
 
+  const { count: subMailCount } = await supabase
+    .from('subscribers')
+    .select('*', { count: 'exact', head: true })
+    .eq('receive_mail', true);
+
   const totalViews = (frameworks || []).reduce((sum, f) => sum + (f.views || 0), 0);
 
   return (
     <AdminPanel
       frameworks={(frameworks || []) as Framework[]}
       subscriberCount={subCount || 0}
+      subscriberMailCount={subMailCount ?? 0}
       totalViews={totalViews}
       userEmail={user.email || ''}
     />

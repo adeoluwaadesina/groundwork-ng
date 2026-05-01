@@ -29,7 +29,10 @@ export function welcomeEmailSubject(): string {
   return "You're on the Ground Work list";
 }
 
-export function welcomeEmailHtml(): string {
+export function welcomeEmailHtml(unsubscribeUrl: string | null): string {
+  const unsubBlock = unsubscribeUrl
+    ? `<p style="margin:0 0 16px 0;color:${INK_SOFT};font-size:14px;">If you prefer not to get those emails, you stay on the list but we will not mail you: <a href="${escapeHtml(unsubscribeUrl)}" style="color:${GREEN_LIGHT};text-decoration:underline;">Unsubscribe from emails</a>.</p>`
+    : `<p style="margin:0 0 16px 0;color:${INK_SOFT};font-size:14px;">If the emails are not useful, you can ignore them.</p>`;
   const inner = `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};">
   <tr>
@@ -37,7 +40,8 @@ export function welcomeEmailHtml(): string {
       <p style="margin:0 0 20px 0;font-family:system-ui,-apple-system,sans-serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:${GREEN};">Ground Work</p>
       <p style="margin:0 0 16px 0;">Thank you for subscribing.</p>
       <p style="margin:0 0 16px 0;color:${INK_SOFT};">You will get a short note when a new framework is published: context on Nigeria's policy and infrastructure landscape, without noise. This is editorial work by Adeoluwa Adesina.</p>
-      <p style="margin:0;color:${INK_SOFT};font-size:14px;">If the emails are not useful, you can ignore them. The site stays the source for the full text.</p>
+      ${unsubBlock}
+      <p style="margin:0;color:${INK_SOFT};font-size:14px;">The site stays the source for the full text.</p>
       <p style="margin:28px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:${INK_SOFT};">Adeoluwa Adesina<br><span style="color:${GREEN};">Ground Work</span></p>
     </td>
   </tr>
@@ -64,9 +68,14 @@ export function broadcastEmailSubject(framework: Framework): string {
   return `New framework: ${framework.title}`;
 }
 
-export function broadcastEmailHtml(framework: Framework, siteUrl: string): string {
+export function broadcastEmailHtml(
+  framework: Framework,
+  siteUrl: string,
+  unsubscribeUrl: string
+): string {
   const url = `${siteUrl}/framework/${encodeURIComponent(framework.id)}`;
   const sector = framework.sector?.trim() || 'General';
+  const unsub = escapeHtml(unsubscribeUrl);
   const inner = `
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BG};">
   <tr>
@@ -86,6 +95,11 @@ export function broadcastEmailHtml(framework: Framework, siteUrl: string): strin
         <a href="${escapeHtml(url)}" style="color:${GREEN_LIGHT};text-decoration:underline;">${escapeHtml(url)}</a>
       </p>
       <p style="margin:28px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:${INK_SOFT};">Adeoluwa Adesina · Ground Work</p>
+      <p style="margin:20px 0 0 0;font-family:system-ui,-apple-system,sans-serif;font-size:12px;color:${INK_SOFT};">
+        <a href="${unsub}" style="color:${GREEN_LIGHT};text-decoration:underline;">Unsubscribe from emails</a>
+        <span style="color:${BORDER};"> · </span>
+        You remain subscribed to the site; we will not send further announcement emails.
+      </p>
     </td>
   </tr>
 </table>`;

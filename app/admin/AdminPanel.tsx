@@ -7,7 +7,10 @@ import type { Framework } from '@/lib/types';
 
 interface Props {
   frameworks: Framework[];
+  /** All rows in `subscribers` (including opted out of email). */
   subscriberCount: number;
+  /** Subscribers who receive admin broadcast / announcement emails. */
+  subscriberMailCount: number;
   totalViews: number;
   userEmail: string;
 }
@@ -23,7 +26,13 @@ const EMPTY_FORM = {
   full_content: '',
 };
 
-export function AdminPanel({ frameworks, subscriberCount, totalViews, userEmail }: Props) {
+export function AdminPanel({
+  frameworks,
+  subscriberCount,
+  subscriberMailCount,
+  totalViews,
+  userEmail,
+}: Props) {
   const router = useRouter();
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -165,6 +174,17 @@ export function AdminPanel({ frameworks, subscriberCount, totalViews, userEmail 
           <div className="admin-stat">
             <div className="admin-stat-count">{subscriberCount}</div>
             <div className="admin-stat-label">Newsletter Subscribers</div>
+            <div
+              style={{
+                fontFamily: 'var(--mono)',
+                fontSize: 10,
+                color: 'rgba(255,255,255,0.35)',
+                marginTop: '0.35rem',
+                letterSpacing: '0.04em',
+              }}
+            >
+              {subscriberMailCount} receiving email
+            </div>
           </div>
           <div className="admin-stat">
             <div className="admin-stat-count">{totalViews.toLocaleString()}</div>
@@ -322,8 +342,12 @@ export function AdminPanel({ frameworks, subscriberCount, totalViews, userEmail 
                   <button
                     className="admin-btn-sm"
                     onClick={() => handleBroadcast(fw.id)}
-                    disabled={broadcastingId !== null || subscriberCount === 0}
-                    title={subscriberCount === 0 ? 'Add subscribers first' : undefined}
+                    disabled={broadcastingId !== null || subscriberMailCount === 0}
+                    title={
+                      subscriberMailCount === 0
+                        ? 'No subscribers opted in to emails (or add subscribers first)'
+                        : undefined
+                    }
                   >
                     {broadcastingId === fw.id ? 'Sending…' : 'Send to subscribers'}
                   </button>

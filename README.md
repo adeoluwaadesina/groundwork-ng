@@ -164,7 +164,8 @@ groundwork/
 │   └── api/
 │       ├── admin/request-login/ # Admin credential pre-check (rate-limited)
 │       ├── subscribe/            # Newsletter signup + welcome email
-│       ├── broadcast/            # Admin: email all subscribers about a framework
+│       ├── unsubscribe/          # GET: opt out of broadcast emails (keeps subscriber row)
+│       ├── broadcast/            # Admin: email opted-in subscribers about a framework
 │       └── views/                # View counter
 ├── components/
 │   ├── SiteHeader.tsx
@@ -191,7 +192,7 @@ groundwork/
 
 **Reading progress.** As readers scroll a framework, scroll percentage is saved to a cookie (`gw_progress_NR-PWR-001`). On return visits, scroll restores to where they left off. No accounts needed.
 
-**Newsletter.** Subscribers are stored only in Supabase (`subscribers` table). On first signup, the app sends a short welcome email through Resend. When you publish or update a framework, you can click **Send to subscribers** in the admin portal. That route loads every subscriber email from Supabase and sends a batch through Resend (up to 100 messages per API call, chunked automatically). List management is yours: remove addresses in the `subscribers` table if someone asks to be taken off.
+**Newsletter.** Subscribers are stored only in Supabase (`subscribers` table). On first signup, the app sends a short welcome email through Resend. When you publish or update a framework, you can click **Send to subscribers** in the admin portal. That route emails only subscribers who have **not** opted out (`receive_mail = true`). Each email includes an **unsubscribe** link: the row stays in `subscribers`, but `receive_mail` is set to `false`, so they no longer receive broadcasts. Signing up again from the homepage turns email back on. To remove someone entirely, delete their row in the `subscribers` table.
 
 **Admin auth.** Username/password via Supabase Auth plus server-side allowlist. Login requires matching `ADMIN_EMAIL` + `ADMIN_PASSWORD`, then `/admin` and protected admin APIs enforce that the active session email matches `ADMIN_EMAIL`.
 
@@ -203,7 +204,7 @@ groundwork/
 
 1. Publish or edit the framework in the admin portal as usual.
 2. In **Published Frameworks**, click **Send to subscribers** on that row.
-3. The site emails everyone in `subscribers` with the framework title, id, sector, overview (lite) text, and a link to the full reader page (`NEXT_PUBLIC_SITE_URL/framework/{id}`).
+3. The site emails everyone in `subscribers` who is still opted in to mail, with the framework title, id, sector, overview (lite) text, a link to the full reader page (`NEXT_PUBLIC_SITE_URL/framework/{id}`), and an unsubscribe link.
 
 You stay within Resend's [API limits](https://resend.com/docs) (including batch size). If a batch fails, check Vercel function logs and the JSON response from the admin action.
 
