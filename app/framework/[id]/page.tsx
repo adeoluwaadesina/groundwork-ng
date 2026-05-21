@@ -15,8 +15,9 @@ async function getFramework(id: string): Promise<Framework | null> {
   }
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const fw = await getFramework(params.id);
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const fw = await getFramework(id);
   if (!fw) return { title: 'Not found · Ground Work' };
   return {
     title: `${fw.title} · ${fw.id} · Ground Work`,
@@ -30,8 +31,9 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   };
 }
 
-export default async function FrameworkPage({ params }: { params: { id: string } }) {
-  const framework = await getFramework(params.id);
+export default async function FrameworkPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const framework = await getFramework(id);
   if (!framework) notFound();
 
   return <FrameworkReader framework={framework} />;
