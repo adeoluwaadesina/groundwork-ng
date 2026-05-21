@@ -1,27 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase-server';
-import { createAdminClient } from '@/lib/supabase-admin';
-import type { Framework } from '@/lib/types';
+import { getFrameworkById } from '@/lib/db/frameworks';
+import { listMailSubscribers } from '@/lib/db/subscribers';
+import { requireAdminApi } from '@/lib/require-admin';
 import { chunk } from '@/lib/email/chunk';
 import { getFromEmail, getResend, resolveSiteUrl } from '@/lib/email/resend-client';
 import { broadcastEmailHtml, broadcastEmailSubject } from '@/lib/email/templates';
 
 export async function POST(request: Request) {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-    if (!adminEmail) {
-      return NextResponse.json({ error: 'Server misconfiguration.' }, { status: 500 });
-    }
-
-    const supabaseAuth = createClient();
-    const {
-      data: { user },
-    } = await supabaseAuth.auth.getUser();
-
-    const userEmail = user?.email?.trim().toLowerCase();
-    if (!userEmail || userEmail !== adminEmail) {
-      return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
-    }
+    const denied = await requireAdminApi();
+    if (denied) return denied;
 
     const body = await request.json();
     const frameworkId =
@@ -39,40 +27,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = createAdminClient();
-
-    const { data: frameworkRow, error: fwError } = await admin
-      .from('frameworks')
-      .select('*')
-      .eq('id', frameworkId)
-      .maybeSingle();
-
-    if (fwError) {
-      console.error('Broadcast framework fetch:', fwError);
-      return NextResponse.json({ error: 'Could not load framework.' }, { status: 500 });
-    }
-    if (!frameworkRow) {
+    const framework = await getFrameworkById(frameworkId);
+    if (!framework) {
       return NextResponse.json({ error: 'Framework not found.' }, { status: 404 });
     }
 
-    const framework = frameworkRow as Framework;
-
-    const { data: subscriberRows, error: subError } = await admin
-      .from('subscribers')
-      .select('email, unsubscribe_token')
-      .eq('receive_mail', true);
-
-    if (subError) {
-      console.error('Broadcast subscribers fetch:', subError);
-      return NextResponse.json({ error: 'Could not load subscribers.' }, { status: 500 });
-    }
-
-    type SubRow = { email: string; unsubscribe_token: string };
-    const rows: SubRow[] = [];
+    const subscriberRows = await listMailSubscribers();
+    const rows: { email: string; unsubscribe_token: string }[] = [];
     const seen = new Set<string>();
-    for (const r of subscriberRows || []) {
-      const e = typeof r.email === 'string' ? r.email.trim().toLowerCase() : '';
-      const tok = r.unsubscribe_token != null ? String(r.unsubscribe_token) : '';
+    for (const r of subscriberRows) {
+      const e = r.email.trim().toLowerCase();
+      const tok = r.unsubscribe_token?.trim() ?? '';
       if (!e.includes('@') || !tok || seen.has(e)) continue;
       seen.add(e);
       rows.push({ email: e, unsubscribe_token: tok });

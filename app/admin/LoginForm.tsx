@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
+import { signIn } from 'next-auth/react';
+import { BRAND } from '@/components/BrandLogo';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
 
 export function LoginForm() {
   const router = useRouter();
-  const supabase = createClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,33 +32,19 @@ export function LoginForm() {
     setErrorMsg('');
 
     try {
-      const authRes = await fetch('/api/admin/request-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail, password }),
-      });
-
-      if (!authRes.ok) {
-        setStatus('error');
-        setErrorMsg('Something went wrong. Try again later.');
-        return;
-      }
-
-      const authData = (await authRes.json()) as { authorized?: boolean };
-      if (!authData.authorized) {
-        setStatus('error');
-        setErrorMsg('Invalid email or password.');
-        return;
-      }
-
-      const { error } = await supabase.auth.signInWithPassword({
+      const result = await signIn('credentials', {
         email: trimmedEmail,
         password,
+        redirect: false,
       });
 
-      if (error) {
+      if (result?.error || result?.ok === false) {
         setStatus('error');
-        setErrorMsg('Invalid email or password.');
+        setErrorMsg(
+          result?.error === 'CredentialsSignin'
+            ? 'Invalid email or password.'
+            : 'Sign-in failed. Clear site cookies for localhost, confirm NEXTAUTH_SECRET is set in .env.local, restart npm run dev, and try again.'
+        );
         return;
       }
 
@@ -74,10 +61,17 @@ export function LoginForm() {
         <Link href="/" className="login-home">
           Back to site
         </Link>
-        <div className="login-title">Ground Work · Admin</div>
-        <p className="login-sub">
-          Sign in with your admin email and password.
-        </p>
+        <div className="login-brand">
+          <Image src={BRAND.icon} alt="" width={48} height={48} className="login-brand-icon" aria-hidden />
+          <Image
+            src={BRAND.wordmark}
+            alt="Ground Work / NR"
+            width={200}
+            height={48}
+            className="login-brand-wordmark"
+          />
+        </div>
+        <p className="login-sub">Admin · sign in with your email and password.</p>
 
         <input
           className="login-input"

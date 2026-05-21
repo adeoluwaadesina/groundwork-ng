@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-admin';
+import { incrementFrameworkViews } from '@/lib/db/frameworks';
 
 export async function POST(request: Request) {
   try {
@@ -8,16 +8,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing framework id.' }, { status: 400 });
     }
 
-    const supabase = createAdminClient();
-    const { data, error } = await supabase.rpc('increment_views', { framework_id: id });
-
-    if (error) {
-      console.error('View increment error:', error);
+    const views = await incrementFrameworkViews(id.trim());
+    if (views === null) {
       return NextResponse.json({ error: 'Failed to increment.' }, { status: 500 });
     }
 
-    return NextResponse.json({ views: data });
+    return NextResponse.json({ views });
   } catch (err) {
+    console.error('View increment error:', err);
     return NextResponse.json({ error: 'Bad request.' }, { status: 400 });
   }
 }

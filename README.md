@@ -2,7 +2,7 @@
 
 Policy and infrastructure frameworks for Nigeria's future. By Adeoluwa Adesina.
 
-Built with Next.js 14, Supabase, and Resend.
+Built with Next.js 14, Neon PostgreSQL, NextAuth, and Resend.
 
 ---
 
@@ -12,7 +12,8 @@ A publication site where you publish structured frameworks (policy, infrastructu
 
 **Stack at a glance:**
 - **Next.js 14 (App Router)** for the site
-- **Supabase** as the database and admin auth backend
+- **Neon** (PostgreSQL) for the database
+- **NextAuth** (credentials) for admin login
 - **Resend** for transactional and broadcast email
 - **Vercel** for hosting (free tier)
 - **Total monthly cost at launch: 0** (within free tiers)
@@ -30,32 +31,22 @@ cd groundwork
 npm install
 ```
 
-### 2. Set up Supabase
+### 2. Set up Neon
 
-1. Go to [supabase.com](https://supabase.com), create a free account, create a new project.
-2. Wait for it to provision (about 2 minutes).
-3. In the project dashboard, go to **SQL Editor** > **New Query**.
-4. Open `supabase/schema.sql` from this folder, copy everything, paste into the SQL editor, click **Run**.
-5. You should see the `frameworks` and `subscribers` tables under **Table Editor**.
+1. Go to [neon.tech](https://neon.tech), create a project, and copy the **connection string** (use the **pooled** URL for Vercel/serverless).
+2. In the Neon SQL editor (or any `psql` client), run the schema in [`db/schema.sql`](db/schema.sql) to create `frameworks`, `subscribers`, and helper functions.
+3. Confirm tables exist: `frameworks`, `subscribers`.
 
-### 3. Get Supabase keys
+If you are migrating from Supabase, export your existing rows and import them into Neon before switching `DATABASE_URL`.
 
-In your Supabase project dashboard:
-
-- Go to **Settings** > **API**
-- Copy these three values:
-  - **Project URL** (under "Project URL")
-  - **anon public** key (under "Project API keys")
-  - **service_role** key (under "Project API keys", click "Reveal")
-
-### 4. Set up Resend
+### 3. Set up Resend
 
 1. Go to [resend.com](https://resend.com), create an account, and open the **API Keys** section.
-2. Create an API key and copy it into `RESEND_API_KEY` (see step 5).
+2. Create an API key and copy it into `RESEND_API_KEY` (see step 4).
 3. **Development and testing:** You can send from Resend's shared address so you do not need your own domain yet. Set `FROM_EMAIL` to `Ground Work <onboarding@resend.dev>`. You can only send to the email address tied to your Resend account until you add a verified domain.
 4. **Production:** In Resend, add and verify your domain (DNS records they provide). Then set `FROM_EMAIL` to something like `Ground Work <hello@yourdomain.com>` using that domain. Unverified domains will not deliver in production.
 
-### 5. Configure environment variables
+### 4. Configure environment variables
 
 In the project root, copy the example file:
 
@@ -66,9 +57,9 @@ cp .env.local.example .env.local
 Open `.env.local` and fill in all the values:
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://xxxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...
+DATABASE_URL=postgresql://...
+NEXTAUTH_SECRET=your-random-secret
+NEXTAUTH_URL=http://localhost:3000
 RESEND_API_KEY=re_xxxx
 FROM_EMAIL=Ground Work <onboarding@resend.dev>
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
@@ -76,18 +67,11 @@ ADMIN_EMAIL=your-real-email@example.com
 ADMIN_PASSWORD=your-strong-admin-password
 ```
 
-**Important:** `ADMIN_EMAIL` and `ADMIN_PASSWORD` must match a real email/password account in Supabase Auth (create it in Supabase **Authentication** > **Users** if needed).
+Generate `NEXTAUTH_SECRET` with `openssl rand -base64 32`. Set `NEXTAUTH_URL` to your site origin (local or production, no trailing slash).
 
-Set `NEXT_PUBLIC_SITE_URL` to your real public URL in production (no trailing slash), for example `https://your-project.vercel.app` or your custom domain. Broadcast emails use it for framework links.
+Set `NEXT_PUBLIC_SITE_URL` to your public URL in production. Broadcast emails use it for framework links.
 
-### 6. Configure Supabase auth settings
-
-Still in Supabase dashboard:
-
-1. Go to **Authentication** > **Users** and ensure your admin user exists as an **email/password** user.
-2. If not, click **Add user** and create the admin email/password you set in `.env.local`.
-
-### 7. Run locally
+### 5. Run locally
 
 ```bash
 npm run dev
@@ -95,12 +79,13 @@ npm run dev
 
 Open `http://localhost:3000`. The site should load with no frameworks yet.
 
-### 8. Log into admin and publish your first framework
+### 6. Log into admin and publish your first framework
 
 1. Go to `http://localhost:3000/admin`.
 2. Enter `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 3. Click **Sign In**. You'll be signed in to the admin portal.
-5. Add your first framework. Hit **Publish**.
+4. **Upload a framework file** (drag-and-drop or click the upload zone): `.md` with YAML frontmatter (recommended), `.json`, or `.txt`. Fields auto-fill; edit anything before saving. Download **framework template** from the upload zone or use [`public/framework-template.md`](public/framework-template.md).
+5. Add your first framework (or finish editing imported fields). Hit **Publish**.
 6. Go back to `/` and you'll see it on the homepage.
 
 ---
@@ -132,11 +117,10 @@ git push -u origin main
 
 After ~1 minute you'll get a URL like `groundwork-xxxxx.vercel.app`.
 
-### 3. Update auth/env for production and preview
+### 3. Update env for production and preview
 
-- In Vercel, set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `NEXT_PUBLIC_SITE_URL` for each environment you use.
-- **Production** and **Preview** are separate: branch previews (for example `…-git-dev-….vercel.app`) only see variables scoped to **Preview**. If `ADMIN_PASSWORD` is missing there, login always fails with a generic invalid-credentials message while the API still returns HTTP 200 (see troubleshooting).
-- In Supabase **Authentication** > **Users**, ensure the same admin email/password exists as an email/password user, and that the Email provider allows password sign-in.
+- In Vercel, set `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `NEXT_PUBLIC_SITE_URL` for each environment you use.
+- **Production** and **Preview** are separate scopes in Vercel. Preview deployments need their own `DATABASE_URL` (can be the same Neon DB) and `NEXTAUTH_URL` set to the preview host (for example `https://your-app-git-dev-….vercel.app`).
 - Redeploy after env changes.
 
 ### 4. (Later) Connect a custom domain
@@ -146,7 +130,7 @@ When you're ready to buy `groundwork.ng` or similar:
 1. Buy from a registrar (Namecheap, Porkbun, GoDaddy).
 2. In Vercel: **Settings** > **Domains** > **Add**, enter your domain.
 3. Vercel gives you DNS records. Paste them into your registrar's DNS panel.
-4. Update Supabase auth URLs to use your new domain.
+4. Update `NEXTAUTH_URL` and `NEXT_PUBLIC_SITE_URL` to your custom domain.
 5. Add the same domain in Resend and update `FROM_EMAIL` after verification.
 
 ---
@@ -162,7 +146,8 @@ groundwork/
 │   ├── framework/[id]/           # Individual framework reader
 │   ├── admin/                    # Admin portal (protected)
 │   └── api/
-│       ├── admin/request-login/ # Admin credential pre-check (rate-limited)
+│       ├── auth/[...nextauth]/   # NextAuth handler
+│       ├── admin/frameworks/     # Admin CRUD (session required)
 │       ├── subscribe/            # Newsletter signup + welcome email
 │       ├── unsubscribe/          # GET: opt out of broadcast emails (keeps subscriber row)
 │       ├── broadcast/            # Admin: email opted-in subscribers about a framework
@@ -173,14 +158,14 @@ groundwork/
 │   ├── SubscribeForm.tsx
 │   └── EyeIcon.tsx
 ├── lib/
+│   ├── db.ts                     # Neon postgres client
+│   ├── db/                       # SQL query helpers
+│   ├── auth.ts                   # NextAuth options
 │   ├── email/                    # Resend helpers and HTML templates
-│   ├── supabase-browser.ts       # Browser-side Supabase client
-│   ├── supabase-server.ts        # Server-side Supabase client
-│   ├── supabase-admin.ts         # Service-role client (server only)
 │   └── types.ts                  # Framework type definition
-├── supabase/
-│   └── schema.sql                # Database schema (run once)
-├── middleware.ts                 # Auth session refresh
+├── db/
+│   └── schema.sql                # Database schema (run once on Neon)
+├── middleware.ts                 # Protects admin API routes
 └── .env.local                    # Your secrets (never commit)
 ```
 
@@ -188,13 +173,13 @@ groundwork/
 
 ## How features work
 
-**View counts.** Every time someone opens a framework, the client posts to `/api/views`, which calls a Postgres function `increment_views` on Supabase. One increment per session (we use `sessionStorage` to prevent reload-spam).
+**View counts.** Every time someone opens a framework, the client posts to `/api/views`, which calls the Postgres function `increment_views` on Neon. One increment per session (we use `sessionStorage` to prevent reload-spam).
 
 **Reading progress.** As readers scroll a framework, scroll percentage is saved to a cookie (`gw_progress_NR-PWR-001`). On return visits, scroll restores to where they left off. No accounts needed.
 
-**Newsletter.** Subscribers are stored only in Supabase (`subscribers` table). On first signup, the app sends a short welcome email through Resend. When you publish or update a framework, you can click **Send to subscribers** in the admin portal. That route emails only subscribers who have **not** opted out (`receive_mail = true`). Each email includes an **unsubscribe** link: the row stays in `subscribers`, but `receive_mail` is set to `false`, so they no longer receive broadcasts. Signing up again from the homepage turns email back on. To remove someone entirely, delete their row in the `subscribers` table.
+**Newsletter.** Subscribers are stored in Neon (`subscribers` table). On first signup, the app sends a short welcome email through Resend. When you publish or update a framework, you can click **Send to subscribers** in the admin portal. That route emails only subscribers who have **not** opted out (`receive_mail = true`). Each email includes an **unsubscribe** link: the row stays in `subscribers`, but `receive_mail` is set to `false`, so they no longer receive broadcasts. Signing up again from the homepage turns email back on. To remove someone entirely, delete their row in the `subscribers` table.
 
-**Admin auth.** Username/password via Supabase Auth plus server-side allowlist. Login requires matching `ADMIN_EMAIL` + `ADMIN_PASSWORD`, then `/admin` and protected admin APIs enforce that the active session email matches `ADMIN_EMAIL`.
+**Admin auth.** NextAuth credentials provider checks `ADMIN_EMAIL` + `ADMIN_PASSWORD` from env. `/admin` shows a login form when there is no session; `/api/admin/*` and `/api/broadcast` require a valid session.
 
 **Lite vs full.** Each framework has two content fields. The Overview (lite) loads first. A button reveals the full version. The toggle in the top bar lets readers switch back.
 
@@ -223,11 +208,11 @@ npm run lint         # Lint
 
 ## Troubleshooting
 
-**"Invalid API key" on subscribe:** Check `.env.local` has the right Supabase keys. Restart the dev server after editing.
+**Database connection errors:** Confirm `DATABASE_URL` is set and `db/schema.sql` has been applied on Neon. Restart the dev server after editing `.env.local`.
 
-**Admin login fails with `Invalid email or password`:** Confirm the entered email and password match `.env.local` or Vercel (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) and the Supabase Auth user (same password for both the env check and `signInWithPassword`). Avoid accidental spaces when pasting values in the Vercel dashboard.
+**Admin login fails with `Invalid email or password`:** Confirm `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `.env.local` or Vercel match what you type. Check `NEXTAUTH_SECRET` and `NEXTAUTH_URL` are set (preview deployments need `NEXTAUTH_URL` matching the preview host).
 
-**Vercel logs show `POST /api/admin/request-login` as 200 but you still cannot sign in:** That is normal. The route always responds with **200** and a JSON body `{ "ok": true, "authorized": true|false }` so failures do not use HTTP error codes. Open the browser **Network** tab, select that request, and inspect the JSON: if `authorized` is `false`, the server rejected the email/password pair (often missing **Preview** env vars, wrong email, or password mismatch). If `authorized` is `true` but you still see an error, Supabase rejected `signInWithPassword` (user missing, wrong password in Auth, or password sign-in disabled for Email).
+**Admin login succeeds then returns to the sign-in form (or terminal shows `JWT_SESSION_ERROR` / `NO_SECRET`):** `.env.local` on disk must include `DATABASE_URL` and `NEXTAUTH_SECRET` (remove old Supabase vars). Quote `DATABASE_URL` if the Neon URL contains `&`. Restart `npm run dev` after editing env. Clear `next-auth.session-token` cookies for localhost, regenerate `NEXTAUTH_SECRET` if you changed it, then sign in again. Run `node scripts/check-env.mjs` to confirm all three vars load.
 
 **Welcome or broadcast emails do not arrive:** Confirm `RESEND_API_KEY` and `FROM_EMAIL` are set. On `onboarding@resend.dev`, Resend only delivers to your own verified account email until you add a domain. In production, use a verified domain and a matching `FROM_EMAIL`. Check Vercel logs for Resend error messages.
 
@@ -243,9 +228,10 @@ npm run lint         # Lint
 
 - **RSS feed** for each framework so readers can subscribe via reader apps
 - **Open Graph image generation** so frameworks look nice when shared on Twitter/LinkedIn
-- **Server-side full-text search** if the homepage filter is not enough (Supabase full-text is free)
+- **Server-side full-text search** if the homepage filter is not enough (Postgres full-text on Neon)
 - **Comment system** (Disqus or Giscus, both free)
 - **Analytics** (Plausible or Vercel Analytics, both privacy-friendly)
-- **Markdown rendering** in the framework body (currently plain paragraphs split on blank lines)
+- **Richer admin editor** (preview pane, autosave) for long Markdown frameworks
+- **DOCX/PDF import** with AI field extraction (optional; currently supports `.md`, `.json`, `.txt`)
 
 Most of these are 1-to-2-hour additions whenever you decide you want them.

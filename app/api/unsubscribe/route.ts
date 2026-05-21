@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-admin';
+import { unsubscribeByToken } from '@/lib/db/subscribers';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -31,24 +31,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const admin = createAdminClient();
-    const { data, error } = await admin
-      .from('subscribers')
-      .update({ receive_mail: false })
-      .eq('unsubscribe_token', token)
-      .eq('receive_mail', true)
-      .select('email')
-      .maybeSingle();
+    const email = await unsubscribeByToken(token);
 
-    if (error) {
-      console.error('Unsubscribe update error:', error);
-      return new NextResponse(
-        page('Something went wrong', 'Please try again later or contact the editor.', false),
-        { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-      );
-    }
-
-    if (!data?.email) {
+    if (!email) {
       return new NextResponse(
         page(
           'Already updated',
