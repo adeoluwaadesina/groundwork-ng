@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
+import { signOut } from 'next-auth/react';
 import type { Framework } from '@/lib/types';
+import type { FrameworkFormFields } from '@/lib/framework-form';
+import { BrandLogo } from '@/components/BrandLogo';
+import { FrameworkFileUpload } from './FrameworkFileUpload';
 
 interface Props {
   frameworks: Framework[];
@@ -42,6 +45,7 @@ export function AdminPanel({
   const [broadcastNotice, setBroadcastNotice] = useState<{ type: 'ok' | 'err'; text: string } | null>(
     null
   );
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
   const handleSave = async () => {
     if (!form.id || !form.title) {
@@ -54,7 +58,6 @@ export function AdminPanel({
     setErrorMsg('');
 
     const tags = form.tags.split(',').map((t) => t.trim()).filter(Boolean);
-    const supabase = createClient();
 
     const payload = {
       id: form.id.trim(),
@@ -65,15 +68,20 @@ export function AdminPanel({
       tags,
       lite_content: form.lite_content,
       full_content: form.full_content,
+      ...(editingId ? { editId: editingId } : {}),
     };
 
-    const { error } = editingId
-      ? await supabase.from('frameworks').update(payload).eq('id', editingId)
-      : await supabase.from('frameworks').insert(payload);
+    const res = await fetch('/api/admin/frameworks', {
+      method: editingId ? 'PATCH' : 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
 
-    if (error) {
+    if (!res.ok) {
       setStatus('error');
-      setErrorMsg(error.message);
+      setErrorMsg(typeof data.error === 'string' ? data.error : 'Save failed.');
       return;
     }
 
@@ -101,10 +109,13 @@ export function AdminPanel({
 
   const handleDelete = async (id: string) => {
     if (!window.confirm(`Delete framework ${id}? This cannot be undone.`)) return;
-    const supabase = createClient();
-    const { error } = await supabase.from('frameworks').delete().eq('id', id);
-    if (error) {
-      alert('Delete failed: ' + error.message);
+    const res = await fetch(`/api/admin/frameworks?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert('Delete failed: ' + (typeof data.error === 'string' ? data.error : 'Unknown error'));
       return;
     }
     router.refresh();
@@ -113,13 +124,34 @@ export function AdminPanel({
   const handleCancelEdit = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setImportWarnings([]);
+  };
+
+  const handleFileImport = (
+    fields: FrameworkFormFields,
+    meta: { filename: string; warnings: string[] }
+  ) => {
+    const hasExisting = Object.values(form).some((v) => v.trim());
+    if (hasExisting) {
+      const ok = window.confirm(
+        'Replace the current form fields with data from the uploaded file? You can still edit everything before saving.'
+      );
+      if (!ok) return;
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      ...fields,
+      id: editingId ? prev.id : fields.id || prev.id,
+    }));
+    setImportWarnings(meta.warnings);
+    setStatus('idle');
+    setErrorMsg('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push('/admin');
-    router.refresh();
+    await signOut({ callbackUrl: '/admin' });
   };
 
   const handleBroadcast = async (frameworkId: string) => {
@@ -159,7 +191,7 @@ export function AdminPanel({
   return (
     <div className="admin-shell">
       <div className="admin-header">
-        <div className="admin-title">Ground Work · Admin Portal</div>
+        <BrandLogo variant="admin" href="/" />
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'rgba(255,255,255,0.4)', marginRight: '0.75rem' }}>
             {userEmail}
@@ -199,6 +231,19 @@ export function AdminPanel({
         <div className="admin-section-title">
           {editingId ? `Editing: ${editingId}` : 'Add New Framework'}
         </div>
+
+        <FrameworkFileUpload onImport={handleFileImport} disabled={status === 'saving'} />
+
+        {importWarnings.length > 0 && (
+          <div className="admin-import-warnings" role="status">
+            <strong>Import notes</strong>
+            <ul>
+              {importWarnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="admin-row">
           <div className="admin-field">

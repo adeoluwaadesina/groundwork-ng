@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { BrandLogo } from '@/components/BrandLogo';
 
 export function SiteHeader() {
   return (
     <header className="site-header">
-      <Link href="/" className="site-logo">
-        GROUND WORK <span>/ NR</span>
-      </Link>
+      <BrandLogo variant="header" href="/" />
       <nav className="header-nav">
         <Link href="/admin">Admin</Link>
         <button

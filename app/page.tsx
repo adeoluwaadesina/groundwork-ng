@@ -1,30 +1,27 @@
-import { createClient } from '@/lib/supabase-server';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SubscribeForm } from '@/components/SubscribeForm';
 import { FrameworkList } from '@/components/FrameworkList';
+import { countSubscribers } from '@/lib/db/subscribers';
+import { listFrameworks } from '@/lib/db/frameworks';
 import type { Framework } from '@/lib/types';
 
-export const revalidate = 60; // Re-fetch every 60 seconds
+export const revalidate = 60;
 
 async function getData() {
-  const supabase = createClient();
-
-  const { data: frameworks, error } = await supabase
-    .from('frameworks')
-    .select('*')
-    .order('published_at', { ascending: false });
-
-  const { count: subscriberCount } = await supabase
-    .from('subscribers')
-    .select('*', { count: 'exact', head: true });
-
-  if (error) console.error('Error loading frameworks:', error);
-
-  return {
-    frameworks: (frameworks || []) as Framework[],
-    subscriberCount: subscriberCount || 0,
-  };
+  try {
+    const [frameworks, subscriberCount] = await Promise.all([
+      listFrameworks(),
+      countSubscribers(),
+    ]);
+    return {
+      frameworks: frameworks as Framework[],
+      subscriberCount,
+    };
+  } catch (error) {
+    console.error('Error loading homepage data:', error);
+    return { frameworks: [] as Framework[], subscriberCount: 0 };
+  }
 }
 
 export default async function HomePage() {

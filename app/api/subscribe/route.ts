@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase-admin';
+import { getUnsubscribeToken, subscribeEmail } from '@/lib/db/subscribers';
 import { getFromEmail, getResend, resolveSiteUrl } from '@/lib/email/resend-client';
 import { welcomeEmailHtml, welcomeEmailSubject } from '@/lib/email/templates';
 
@@ -12,42 +12,13 @@ export async function POST(request: Request) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const supabase = createAdminClient();
-    let alreadySubscribed = false;
+    const { alreadySubscribed } = await subscribeEmail(cleanEmail);
 
-    const { error: dbError } = await supabase.from('subscribers').insert({ email: cleanEmail });
-
-    if (dbError) {
-      if (dbError.code === '23505') {
-        alreadySubscribed = true;
-        const { error: upErr } = await supabase
-          .from('subscribers')
-          .update({ receive_mail: true })
-          .eq('email', cleanEmail);
-        if (upErr) {
-          console.error('Supabase subscribe re-opt-in error:', upErr);
-          return NextResponse.json({ error: 'Could not update your subscription.' }, { status: 500 });
-        }
-      } else {
-        console.error('Supabase subscribe error:', dbError);
-        return NextResponse.json({ error: 'Could not save your subscription. Please try again.' }, { status: 500 });
-      }
-    }
-
-    const { data: row, error: tokenErr } = await supabase
-      .from('subscribers')
-      .select('unsubscribe_token')
-      .eq('email', cleanEmail)
-      .maybeSingle();
-
-    if (tokenErr || !row?.unsubscribe_token) {
-      console.error('Subscribe token fetch:', tokenErr);
-    }
-
+    const token = await getUnsubscribeToken(cleanEmail);
     const siteUrl = resolveSiteUrl();
     const unsubBase = `${siteUrl}/api/unsubscribe`;
-    const unsubscribeUrl = row?.unsubscribe_token
-      ? `${unsubBase}?token=${encodeURIComponent(String(row.unsubscribe_token))}`
+    const unsubscribeUrl = token
+      ? `${unsubBase}?token=${encodeURIComponent(token)}`
       : null;
 
     const resend = getResend();
